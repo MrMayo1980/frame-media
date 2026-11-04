@@ -1,0 +1,4 @@
+export function safeURL(value){try{const u=new URL(value);return u.protocol==='https:'?u.href:''}catch{return ''}}
+export async function resolveURL(item){if(!item.url)throw Error('Нет адреса файла');return item.url}
+export function connection(){return {base:localStorage.getItem('frame-api-url')||'',password:sessionStorage.getItem('frame-api-password')||''}}
+export async function api(path,body,signal){const {base,password}=connection();if(!base||!password)throw Error('Сначала откройте «Подключение» и задайте адрес сервера и пароль.');const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+password},body:JSON.stringify(body),signal});let data;try{data=await r.json()}catch{throw Error('Сервер вернул некорректный ответ. Проверьте адрес подключения.')}if(!r.ok)throw Error(data.error||'Ошибка сервера '+r.status);return data}

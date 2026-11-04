@@ -22,11 +22,13 @@ jobs:
         with:
           node-version: '22'
       - run: npm test
+      - run: npm ci --prefix server
+      - run: npm test --prefix server
       - uses: actions/configure-pages@v5
       - name: Prepare static site
         run: |
           mkdir _site
-          cp index.html style.css app.js providers.js archive.js .nojekyll _site/
+          cp index.html style.css app.js web-client.js archive.js .nojekyll _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

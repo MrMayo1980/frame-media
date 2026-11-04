@@ -2,3 +2,6 @@ _site/
 node_modules/
 *.zip
 .DS_Store
+.env
+.env.*
+!.env.example

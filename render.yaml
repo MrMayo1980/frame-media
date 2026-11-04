@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: frame-google-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: SERPAPI_KEY
+        sync: false
+      - key: APP_ACCESS_KEY
+        sync: false
+      - key: ALLOWED_ORIGIN
+        value: https://mrmayo1980.github.io

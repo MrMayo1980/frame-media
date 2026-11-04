@@ -1,0 +1,15 @@
+import {load} from 'cheerio';
+import {publicURL} from './security.js';
+function cleanURL(raw,base){try{if(!raw||raw.startsWith('data:')||raw.startsWith('blob:'))return '';const u=publicURL(new URL(raw,base).href);u.hash='';return u.href}catch{return ''}}
+export function extractMedia(html,page,types,query=''){
+ const $=load(html),items=new Map(),words=query.toLowerCase().split(/\s+/).filter(w=>w.length>2),pageTitle=$('title').text().trim();
+ function add(raw,type,title='',width=0,height=0){const url=cleanURL(raw,page);if(!url)return;if(/\.(svg|ico)(?:[?#]|$)/i.test(url))return;if(type==='photo'&&/\.gif(?:[?#]|$)/i.test(url))type='gif';if(!types.includes(type))return;if(width&&Number(width)<180||height&&Number(height)<120)return;if(/(?:favicon|tracking|spacer|pixel\.|logo[._-])/i.test(url))return;const text=title||pageTitle||new URL(url).pathname.split('/').pop();const score=words.filter(w=>(text+' '+url).toLowerCase().includes(w)).length;if(!items.has(url))items.set(url,{url,type,title:text.slice(0,250),page,site:new URL(page).hostname.replace(/^www\./,''),author:'См. исходную страницу',license:'Проверьте права на странице источника',score})}
+ $('img').each((_,e)=>{const el=$(e),title=el.attr('alt')||el.attr('title')||'',width=el.attr('width'),height=el.attr('height');const srcset=el.attr('data-srcset')||el.attr('srcset');const candidates=srcset?srcset.split(',').map(s=>s.trim().split(/\s+/)).sort((a,b)=>(parseFloat(b[1])||0)-(parseFloat(a[1])||0)):[];const raw=candidates[0]?.[0]||el.attr('data-src')||el.attr('data-original')||el.attr('data-lazy-src')||el.attr('src');add(raw,'photo',title,width,height)});
+ $('picture source').each((_,e)=>{const el=$(e),raw=(el.attr('srcset')||'').split(',').pop()?.trim().split(/\s+/)[0];add(raw,'photo',el.closest('picture').find('img').attr('alt'))});
+ $('meta[property="og:image"],meta[name="twitter:image"],meta[property="og:image:url"]').each((_,e)=>add($(e).attr('content'),'photo',pageTitle));
+ $('video').each((_,e)=>{const el=$(e);add(el.attr('src'),'video',el.attr('title')||pageTitle);el.find('source').each((_,s)=>add($(s).attr('src'),'video',pageTitle))});
+ $('a[href]').each((_,e)=>{const href=$(e).attr('href')||'';if(/\.(jpe?g|png|webp|gif)(?:[?#]|$)/i.test(href))add(href,'photo',$(e).attr('title')||$(e).text().trim());if(/\.(mp4|webm|ogv)(?:[?#]|$)/i.test(href))add(href,'video',$(e).text().trim())});
+ function walk(data,depth=0){if(depth>8||!data)return;if(Array.isArray(data)){for(const x of data.slice(0,100))walk(x,depth+1);return}if(typeof data!=='object')return;const kind=String(data['@type']||'');if(/ImageObject|VideoObject/i.test(kind))add(data.contentUrl||data.url,/Video/i.test(kind)?'video':'photo',data.caption||data.name);for(const [k,v]of Object.entries(data)){if(k==='image'){for(const entry of Array.isArray(v)?v:[v]){if(typeof entry==='string')add(entry,'photo',data.name);else walk(entry,depth+1)}}else if(typeof v==='object')walk(v,depth+1)}}
+ $('script[type="application/ld+json"]').each((_,e)=>{try{walk(JSON.parse($(e).text()))}catch{}});
+ return [...items.values()].sort((a,b)=>b.score-a.score).slice(0,150);
+}
