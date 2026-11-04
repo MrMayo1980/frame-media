@@ -9,7 +9,7 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
-        value: 22
+        value: "22"
       - key: SERPAPI_KEY
         sync: false
       - key: APP_ACCESS_KEY
